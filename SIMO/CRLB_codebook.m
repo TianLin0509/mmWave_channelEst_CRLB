@@ -2,13 +2,18 @@ Nr =192;
 Nt = 1;
 Nrf = 1;
 Ns = 1;
-SNR = -20 : 5 : 10;
+SNR = -20:5:10;
 
 Nloop = 1000;
 % random observation matrices
-Nw = 256; % number of observations
+
 Nv = 10;
-W = exp( 1i*unifrnd(0,2*pi,Nr,Nw));
+Ncode = 256;
+index = (0 : (Nr - 1))';
+
+% generate codebook
+theta_code = -pi/2 : pi/(Ncode-1) : pi/2;
+W = exp(1j * pi * index * sin(theta_code));
 theta = unifrnd(-pi/2, pi/2);
 alpha = sqrt(1/2) * (randn() + 1j * randn());
 
@@ -23,7 +28,7 @@ for j = 1 : length(SNR)
         phi = kron(V', W');
         
         % compute A
-        index = (0 : (Nr - 1))';
+        
         a1 = exp(1j * pi * index * sin(theta));
         a2 = a1 * 1j;
         a3 = zeros(Nr,1);
@@ -43,20 +48,8 @@ for j = 1 : length(SNR)
         n = Vn / sqrt(2) * (randn(Nr,Nv) + 1j * randn(Nr,Nv));
         
         y = W' * h * s + W' * n;
-        r = y * y';
-        [U, S, V] = svd(r);
-        NoiseSpace = U(:, 2:end);
-        
-        theta_set =  -pi/2:0.01:pi/2;
-        for i = 1 : length(theta_set)
-            theta_tmp = theta_set(i);
-            x = exp(1j * (0:(Nr-1))'* pi * sin(theta_tmp));
-            tmp =  NoiseSpace' * W' * x;
-            p(i) = norm(tmp, 'fro');
-        end
-        [~, idx] = min(p);
-        theta_est = theta_set(idx);
-        music_mse(ll) = (theta - theta_est)^2;
+       [~, idx] = max(mean(y,2));
+        music_mse(ll) = (theta - theta_code(idx))^2;
     end
     Music(j) = mean(music_mse);
     crlb(j) = mean(crlb_mse);
@@ -66,7 +59,7 @@ end
 semilogy(SNR, crlb, 'k', 'LineWidth', 2)
 hold on
 semilogy(SNR, Music, 'b', 'LineWidth', 2)
-legend('CRLB', 'Music')
+legend('CRLB', 'codebook')
 xlabel('SNR')
 ylabel('MSE')
 
